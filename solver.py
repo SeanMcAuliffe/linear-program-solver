@@ -4,7 +4,6 @@
 import sys
 from enum import Enum
 from fractions import Fraction
-from typing import Type
 
 
 class VarType(Enum):
@@ -93,6 +92,7 @@ def main():
 
     # Read stdin encoding of LP
     lines = sys.stdin.readlines()
+    lines = [x for x in lines if len(x.rstrip()) > 0]
     print("stdin decoding:")
 
     # Get the number of constaint functions
@@ -114,6 +114,7 @@ def main():
     initial_dictionary = SimplexDictionary(objective, constraints)
     print(f"Initial dictionary:\n{initial_dictionary}")
     print(initial_dictionary.is_feasible())
+
 
 if __name__ == "__main__":
     main()
