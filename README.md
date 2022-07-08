@@ -1,1 +1,1 @@
-# linear-program-solver
+# Linear Program Solver
