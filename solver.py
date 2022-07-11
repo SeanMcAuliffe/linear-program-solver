@@ -62,9 +62,13 @@ class SimplexDictionary:
     def is_unbounded(self):
         for i, objvar in enumerate(self.obj.nonbasic):
             if objvar.coef > 0:
+                all_pos = True
                 for con in self.con:
-                    if con.nonbasic[i].coef > 0:
-                        return True
+                    if con.nonbasic[i].coef < 0:
+                        all_pos = False
+                        break
+                if all_pos:
+                    return True
         return False
 
     def is_optimal(self):
