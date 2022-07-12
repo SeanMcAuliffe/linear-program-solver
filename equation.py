@@ -1,5 +1,6 @@
 from variable import VarType
 from copy import deepcopy
+from solver import timing
 
 class Objective:
     # TODO: Have this inherit from a parent class, Equation
@@ -9,18 +10,15 @@ class Objective:
         self.nonbasic = nonbasic
         #self._sort()
 
+    @timing
     def redefine_term(self, ex):
         expression = deepcopy(ex)
-        elimination = False
         multiplier = 0
         for var in self.nonbasic:
             if var.name == expression.basic.name:
-                elimination = True
                 multiplier = var.coef
                 self.nonbasic.remove(var)
                 break
-        if not elimination:
-            raise Exception("Elimination term not in nonbasic list.")
         self.scalar += expression.scalar*multiplier
         new_terms = [v for v in expression.nonbasic]
         for new in new_terms:
@@ -66,6 +64,7 @@ class Constraint:
         self.basic.coef = 1
         #self._sort()
     
+    @timing
     def rearrange_in_terms_of(self, name):
         varname = deepcopy(name)
         """ Rearrange the equation so that `variable` is the 
@@ -86,22 +85,19 @@ class Constraint:
         self.scalar /= divisor
         #self._sort()
 
+    @timing
     def redefine_term(self, ex):
         expression = deepcopy(ex)
         """ The definition of `variable` is being replaced with
         an `expression` in terms of the other variables in this 
         linear equation. The expression is another constraint object,
         representing the definition of its basic variable. """
-        elimination = False
         multiplier = 0
         for var in self.nonbasic:
             if var.name == expression.basic.name:
-                elimination = True
                 multiplier = var.coef
                 self.nonbasic.remove(var)
                 break
-        if not elimination:
-            raise Exception("Elimination term not in nonbasic list.")
         self.scalar += expression.scalar*multiplier
         new_terms = [v for v in expression.nonbasic]
         for new in new_terms:

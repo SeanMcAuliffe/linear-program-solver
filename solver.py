@@ -9,6 +9,21 @@ from variable import DictionaryVariable as Variable, VarType
 from equation import Constraint, Objective
 
 
+from functools import wraps
+from time import time
+
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        print('func:%r took: %2.4f sec' % \
+          (f.__name__, te-ts))
+        return result
+    return wrap
+
+@timing
 def blands_rule(objective, constraints):
     """ Returns the name of the chosen entering and
     leaving variables, chosen using Blands Rule. """
