@@ -4,6 +4,7 @@
 
 import sys
 from fractions import Fraction
+from tkinter import simpledialog
 from variable import DictionaryVariable as Variable, VarType
 from equation import Constraint, Objective
 
@@ -28,6 +29,9 @@ def blands_rule(objective, constraints):
             if min_ratio is None:
                 min_ratio = ratio
                 leaving = con.basic.name
+            # TODO what happens when there is a tie, need to track
+            # index of leaving varialbe which leads to each ratio, and choose
+            # the minimum index
             if ratio < min_ratio:
                 min_ratio = ratio
                 leaving = con.basic.name
@@ -52,6 +56,7 @@ class SimplexDictionary:
             temp.append(Variable(VarType.slack, i+1, constraint[-1]))
             temp.extend([Variable(VarType.optimization, j+1, coef*(-1)) for j, coef in enumerate(constraint[:-1])])
             self.con.append(Constraint(temp[0], temp[1:]))
+        self.highest_index = self.obj.nonbasic[-1].index
 
     def is_feasible(self):
         for c in self.con:
@@ -89,7 +94,6 @@ class SimplexDictionary:
             print(f"Iteration: {iteration}")
             iteration += 1 
             entering, leaving = self.rule(self.obj, self.con)
-            print(f"Entering: {entering}, Leaving: {leaving}\n")
             for i, c in enumerate(self.con):
                 if c.basic.name == leaving:
                     # Pivot entering into basis in leaving row
@@ -103,12 +107,8 @@ class SimplexDictionary:
                     c.redefine_term(expression)
             # Substitude new defn into objective function
             self.obj.redefine_term(expression)
-            print(self.__repr__())
-        print("\nDone\n")
-        print(f"Optimal Value: {self.obj.scalar}")
-        for c in self.con:
-            if c.basic.vartype is VarType.optimization:
-                print(f"{c.basic.name} = {c.scalar}")
+            #print(self)
+
 
     def init_from_feasible_point(self):
         # TODO: Handle initially infeasible dictionaries
@@ -145,8 +145,35 @@ def main():
         constraints[i-1] = [Fraction.from_float(x).limit_denominator() for x in constraints[i-1]]
 
     # Construct initial dictionary representation of LP
-    initial_dictionary = SimplexDictionary(objective, constraints, blands_rule)
-    initial_dictionary.run()
+    simplex_dictionary = SimplexDictionary(objective, constraints, blands_rule)
+    if not simplex_dictionary.is_feasible():
+        print("can't handle this yet")
+        quit()
+    simplex_dictionary.run()
+
+    # Format Output
+    if not simplex_dictionary.is_feasible():
+        print("infeasible")
+    elif simplex_dictionary.is_unbounded():
+        print("unbounded")
+    elif simplex_dictionary.is_optimal():
+        print("optimal")
+        print(f'{float(simplex_dictionary.obj.scalar):.9g}')
+        x = [(v.basic.index, v.scalar) for v in simplex_dictionary.con if v.basic.vartype is VarType.optimization]
+        x.sort(key=lambda x: x[0])
+        v = []
+        j = 0
+        for i in range(simplex_dictionary.highest_index):
+            if x[j][0] == (i+1):
+                v.append(x[j])
+                j += 1
+            else:
+                v.append((i+1,0))
+        for e in v:
+            print(f"{float(e[1]):.9g}", end=' ')
+        print()
+    else:
+        print("undefined")
 
 
 if __name__ == "__main__":

@@ -7,11 +7,10 @@ class Objective:
     def __init__(self, nonbasic):
         self.scalar = 0
         self.nonbasic = nonbasic
-        self._sort()
+        #self._sort()
 
     def redefine_term(self, ex):
         expression = deepcopy(ex)
-        print(f"Redefining: {self} in terms of {expression}")
         elimination = False
         multiplier = 0
         for var in self.nonbasic:
@@ -35,9 +34,7 @@ class Objective:
                     break
             if not found:
                 self.nonbasic.append(new)
-        self._sort()
-        print("Done:")
-        print(self)
+       # self._sort()
 
     def _sort(self):
         """ Ensure that nonbasic variables are always listed in order of index.
@@ -67,7 +64,7 @@ class Constraint:
         self.basic = basic
         self.nonbasic = nonbasic
         self.basic.coef = 1
-        self._sort()
+        #self._sort()
     
     def rearrange_in_terms_of(self, name):
         varname = deepcopy(name)
@@ -87,7 +84,7 @@ class Constraint:
         for var in self.nonbasic:
             var.coef /= divisor
         self.scalar /= divisor
-        self._sort()
+        #self._sort()
 
     def redefine_term(self, ex):
         expression = deepcopy(ex)
@@ -95,7 +92,6 @@ class Constraint:
         an `expression` in terms of the other variables in this 
         linear equation. The expression is another constraint object,
         representing the definition of its basic variable. """
-        print(f"Redefining: {self} in terms of {expression}")
         elimination = False
         multiplier = 0
         for var in self.nonbasic:
@@ -106,12 +102,10 @@ class Constraint:
                 break
         if not elimination:
             raise Exception("Elimination term not in nonbasic list.")
-        print(f"MULTIPLIER: {multiplier}")
         self.scalar += expression.scalar*multiplier
         new_terms = [v for v in expression.nonbasic]
         for new in new_terms:
             new.coef *= multiplier
-        print(f"INTERMEDIATE NEW TERMS: {new_terms}")
         for new in new_terms:
             found = False
             for v in self.nonbasic:
@@ -121,9 +115,7 @@ class Constraint:
                     break
             if not found:
                 self.nonbasic.append(new)
-        self._sort()
-        print("Done:")
-        print(self)
+        #self._sort()
 
     def _sort(self):
         """ Ensure that nonbasic variables are always listed in order of index.
