@@ -1,6 +1,6 @@
 from variable import VarType
 from copy import deepcopy
-from util import timing
+#from util import timing
 from time import time
 
 
@@ -10,7 +10,7 @@ class Objective:
     def __init__(self, nonbasic):
         self.scalar = 0
         self.nonbasic = nonbasic
-        #self._sort()
+        self._sort()
 
     #@timing
     def redefine_term_objective(self, expression):
@@ -34,7 +34,7 @@ class Objective:
                 copy_variable.coef *= multiplier
                 temp.append(copy_variable)
         self.nonbasic.extend(temp)
-
+        self._sort()
 
     def _sort(self):
         """ Ensure that nonbasic variables are always listed in order of index.
@@ -64,7 +64,7 @@ class Constraint:
         self.basic = basic
         self.nonbasic = nonbasic
         self.basic.coef = 1
-        #self._sort()
+        self._sort()
     
     #@timing
     def rearrange_in_terms_of(self, varname):
@@ -84,6 +84,7 @@ class Constraint:
         for var in self.nonbasic:
             var.coef /= divisor
         self.scalar /= divisor
+        self._sort()
 
    # @timing
     def redefine_term_constraint(self, expression):
@@ -110,6 +111,7 @@ class Constraint:
                 copy_variable.coef *= multiplier
                 temp.append(copy_variable)
         self.nonbasic.extend(temp)
+        self._sort()
 
     def _sort(self):
         """ Ensure that nonbasic variables are always listed in order of index.

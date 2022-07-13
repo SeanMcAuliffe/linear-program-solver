@@ -1,5 +1,7 @@
 from enum import Enum
 
+from numpy import var
+
 
 class VarType(Enum):
     optimization = 1
@@ -17,7 +19,12 @@ class DictionaryVariable:
         self.vartype = vartype
         self.index = index
         self.coef = coef
-        self.name = f"x_{self.index}" if vartype is VarType.optimization else f"w_{self.index}"
+        if vartype is VarType.optimization:
+            self.name = f"x_{self.index}"
+        elif vartype is VarType.slack:
+            self.name = f"w_{self.index}"
+        elif vartype is VarType.omega:
+            self.name = "\u03A9"
 
     def __lt__(self, other):
         if type(other) is DictionaryVariable:
