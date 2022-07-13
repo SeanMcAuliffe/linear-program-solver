@@ -145,7 +145,7 @@ class SimplexDictionary:
     def run(self):
         while self.should_continue():
             entering, leaving = self.rule(self.obj, self.con)
-            print(f"Pivoting: entering = {entering}, leaving = {leaving}")
+            #print(f"Pivoting: entering = {entering}, leaving = {leaving}")
             self.pivot(entering, leaving)
 
     def init_from_feasible_point(self):
@@ -211,11 +211,15 @@ class SimplexDictionary:
         return r
 
 
-def main():
-    ts = time()
+def main(filename):
+    with open(filename, "r") as f:
+        lines = f.readlines()
+        lines = [x for x in lines if len(x.rstrip()) > 0]
+    #print("In main")
+    #ts = time()
     # Read stdin encoding of LP
-    lines = sys.stdin.readlines()
-    lines = [x for x in lines if len(x.rstrip()) > 0]
+    # lines = sys.stdin.readlines()
+    # lines = [x for x in lines if len(x.rstrip()) > 0]
 
     # Get the number of constaint functions
     num_constraints = len(lines) - 1
@@ -235,10 +239,14 @@ def main():
     if not simplex_dictionary.is_feasible():
         #return [["infeasible"], ["initially infeasible"]]
         auxiliary_lp = simplex_dictionary.get_auxiliary_lp()
-        print("Received the auxiliary problem:")
-        print(auxiliary_lp)
-        print("Running the aux LP")
+        #print("Received the auxiliary problem:")
+        #print(auxiliary_lp)
+        #print("Running the aux LP")
+        print("initially infeasible")
+        quit()
+        sys.stderr.write("Starting auxiliary LP\n")
         auxiliary_lp.run()
+        sys.stderr.write("Finished auxiliary LP\n")
         if auxiliary_lp.is_unbounded():
             print("infeasible")
             quit()
@@ -246,6 +254,8 @@ def main():
             print("infeasible")
             quit()
         else:
+            print("initially infeasible")
+            quit()
             print("Initial LP determined to be feasible at:")
             print([c[1].__str__() for c in auxiliary_lp.coordinates()])
             print(auxiliary_lp)
@@ -281,8 +291,8 @@ def main():
     #     print()
     # else:
     #     print("undefined")
-    te = time()
-    print(f"Overall execution time: {te-ts}")
+   # te = time()
+    #print(f"Overall execution time: {te-ts}")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1])
