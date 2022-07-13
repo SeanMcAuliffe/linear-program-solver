@@ -76,11 +76,10 @@ class SimplexDictionary:
         for constraint in auxiliary_lp.con:
             constraint.nonbasic.append(Variable(VarType.omega, self.highest_index+1, 1))
         # If not initially feasible, perform initial pivot
-        print("Initial pivot:\n")
         if not auxiliary_lp.is_feasible():
             leaving = self.least_feasible_constraint()
             entering = "\u03A9"
-            self.pivot(entering, leaving)
+            auxiliary_lp.pivot(entering, leaving)
         return auxiliary_lp
 
     def least_feasible_constraint(self):
@@ -185,6 +184,7 @@ def main():
     simplex_dictionary = SimplexDictionary(objective, constraints, blands_rule)
     if not simplex_dictionary.is_feasible():
         auxiliary_lp = simplex_dictionary.get_auxiliary_lp()
+        print("Received the auxiliary problem:")
         print(auxiliary_lp)
         quit()
     simplex_dictionary.run()
@@ -195,6 +195,8 @@ def main():
     elif simplex_dictionary.is_unbounded():
         print("unbounded")
     elif simplex_dictionary.is_optimal():
+        # TODO: Refactor this output method
+        # It errors out on vanberbei_example3.6.txt
         print("optimal")
         print(f'{float(simplex_dictionary.obj.scalar):.9g}')
         x = [(v.basic.index, v.scalar) for v in simplex_dictionary.con if v.basic.vartype is VarType.optimization]
