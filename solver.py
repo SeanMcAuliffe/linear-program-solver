@@ -39,7 +39,8 @@ def blands_rule(objective, constraints):
             elif ratio == min_ratio:
                 challenger = con.basic.index # new possible leaving var index
                 # Previously selected leaving var index
-                champion = int(''.join(c for c in leaving if c.isdigit()))
+                # TODO: This breaks with omega
+                champion = int(''.join(c for c in leaving if c.isdigit())) if leaving != "\u03A9" else challenger+1
                 if challenger < champion:
                     leaving = con.basic.name
 
@@ -144,11 +145,60 @@ class SimplexDictionary:
     def run(self):
         while self.should_continue():
             entering, leaving = self.rule(self.obj, self.con)
+            print(f"Pivoting: entering = {entering}, leaving = {leaving}")
             self.pivot(entering, leaving)
 
     def init_from_feasible_point(self):
         # TODO: Handle initially infeasible dictionaries
         pass
+
+    def report(self):
+        # Format Output
+        if not self.is_feasible():
+            print("infeasible")
+        elif self.is_unbounded():
+            print("unbounded")
+        elif self.is_optimal():
+            # TODO: Refactor this output method
+            # It errors out on vanberbei_example3.6.txt
+            # And others, like optimal_3x3_8.txt
+            print("optimal")
+            print(f"{float(self.obj.scalar):.7g}")
+            coords = self.coordinates()
+            for c in coords:
+                print(f"{float(c[1]):.7g}", end=' ')
+            print()
+        else:
+            print("undefined")
+
+    def coordinates(self):
+        coords = []
+        x = [(v.basic.index, v.scalar) for v in self.con if v.basic.vartype is VarType.optimization]
+        x.sort(key=lambda x: x[0])
+        j = 0
+        for i in range(self.highest_index):
+            # TODO: Understand why try / except works here
+            try:
+                if x[j][0] == (i+1):
+                    coords.append(x[j])
+                    j += 1
+                else:
+                    coords.append((i+1,0))
+            except IndexError:
+                coords.append((i+1,0))  
+        return coords
+
+    def convert(self):
+        feasible_lp = deepcopy(self)
+        for var in feasible_lp.obj.nonbasic:
+            if var.name == "\u03A9":
+                feasible_lp.obj.nonbasic.remove(var)
+                break
+        for constraint in feasible_lp.con:
+            for var in constraint:
+                if var.name == "\u03A9":
+                    constraint.remove(var)
+                    break
 
     def __repr__(self):
         r = f"Feasible: {self.is_feasible()}\n"
@@ -183,37 +233,54 @@ def main():
     # Construct initial dictionary representation of LP
     simplex_dictionary = SimplexDictionary(objective, constraints, blands_rule)
     if not simplex_dictionary.is_feasible():
+        #return [["infeasible"], ["initially infeasible"]]
         auxiliary_lp = simplex_dictionary.get_auxiliary_lp()
         print("Received the auxiliary problem:")
         print(auxiliary_lp)
-        quit()
-    simplex_dictionary.run()
-
-    # Format Output
-    if not simplex_dictionary.is_feasible():
-        print("infeasible")
-    elif simplex_dictionary.is_unbounded():
-        print("unbounded")
-    elif simplex_dictionary.is_optimal():
-        # TODO: Refactor this output method
-        # It errors out on vanberbei_example3.6.txt
-        print("optimal")
-        print(f'{float(simplex_dictionary.obj.scalar):.9g}')
-        x = [(v.basic.index, v.scalar) for v in simplex_dictionary.con if v.basic.vartype is VarType.optimization]
-        x.sort(key=lambda x: x[0])
-        v = []
-        j = 0
-        for i in range(simplex_dictionary.highest_index):
-            if x[j][0] == (i+1):
-                v.append(x[j])
-                j += 1
-            else:
-                v.append((i+1,0))
-        for e in v:
-            print(f"{float(e[1]):.9g}", end=' ')
-        print()
+        print("Running the aux LP")
+        auxiliary_lp.run()
+        if auxiliary_lp.is_unbounded():
+            print("infeasible")
+            quit()
+        elif auxiliary_lp.obj.scalar != 0:
+            print("infeasible")
+            quit()
+        else:
+            print("Initial LP determined to be feasible at:")
+            print([c[1].__str__() for c in auxiliary_lp.coordinates()])
+            print(auxiliary_lp)
+            quit()
+            feasible_dictionary = auxiliary_lp.convert()
     else:
-        print("undefined")
+        simplex_dictionary.run()
+        #return ["optimal", f"{float(simplex_dictionary.obj.scalar):.7g}", [f"{float(x[1]):.7g}" for x in simplex_dictionary.coordinates()]]
+        simplex_dictionary.report()
+
+    # # Format Output
+    # if not simplex_dictionary.is_feasible():
+    #     print("infeasible")
+    # elif simplex_dictionary.is_unbounded():
+    #     print("unbounded")
+    # elif simplex_dictionary.is_optimal():
+    #     # TODO: Refactor this output method
+    #     # It errors out on vanberbei_example3.6.txt
+    #     print("optimal")
+    #     print(f'{float(simplex_dictionary.obj.scalar):.9g}')
+    #     x = [(v.basic.index, v.scalar) for v in simplex_dictionary.con if v.basic.vartype is VarType.optimization]
+    #     x.sort(key=lambda x: x[0])
+    #     v = []
+    #     j = 0
+    #     for i in range(simplex_dictionary.highest_index):
+    #         if x[j][0] == (i+1):
+    #             v.append(x[j])
+    #             j += 1
+    #         else:
+    #             v.append((i+1,0))
+    #     for e in v:
+    #         print(f"{float(e[1]):.9g}", end=' ')
+    #     print()
+    # else:
+    #     print("undefined")
     te = time()
     print(f"Overall execution time: {te-ts}")
 
