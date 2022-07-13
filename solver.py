@@ -4,26 +4,11 @@
 
 import sys
 from fractions import Fraction
-from tkinter import simpledialog
 from variable import DictionaryVariable as Variable, VarType
 from equation import Constraint, Objective
+from util import timing
 
-
-from functools import wraps
-from time import time
-
-def timing(f):
-    @wraps(f)
-    def wrap(*args, **kw):
-        ts = time()
-        result = f(*args, **kw)
-        te = time()
-        print('func:%r took: %2.4f sec' % \
-          (f.__name__, te-ts))
-        return result
-    return wrap
-
-@timing
+#@timing
 def blands_rule(objective, constraints):
     """ Returns the name of the chosen entering and
     leaving variables, chosen using Blands Rule. """
@@ -44,11 +29,10 @@ def blands_rule(objective, constraints):
             if min_ratio is None:
                 min_ratio = ratio
                 leaving = con.basic.name
-            # TODO what happens when there is a tie, need to track
-            # index of leaving varialbe which leads to each ratio, and choose
-            # the minimum index
             if ratio < min_ratio:
                 min_ratio = ratio
+                leaving = con.basic.name
+            elif ratio == min_ratio and con.basic.name < leaving:
                 leaving = con.basic.name
 
     return entering, leaving
@@ -73,12 +57,14 @@ class SimplexDictionary:
             self.con.append(Constraint(temp[0], temp[1:]))
         self.highest_index = self.obj.nonbasic[-1].index
 
+    #@timing
     def is_feasible(self):
         for c in self.con:
             if c.scalar < 0:
                 return False
         return True
 
+    #@timing
     def is_unbounded(self):
         for i, objvar in enumerate(self.obj.nonbasic):
             if objvar.coef > 0:
@@ -91,6 +77,7 @@ class SimplexDictionary:
                     return True
         return False
 
+    #@timing
     def is_optimal(self):
         optimal = True
         for var in self.obj.nonbasic:
@@ -98,16 +85,18 @@ class SimplexDictionary:
                 optimal = False
         return optimal
 
+    #@timing
     def should_continue(self):
         unbounded = self.is_unbounded()
         optimal = self.is_optimal()
         return (not optimal) and (not unbounded)
 
+    @timing
     def run(self):
-        iteration = 0
+        #iteration = 0
         while self.should_continue():
-            print(f"Iteration: {iteration}")
-            iteration += 1 
+            #print(f"Iteration: {iteration}")
+            #iteration += 1 
             entering, leaving = self.rule(self.obj, self.con)
             for i, c in enumerate(self.con):
                 if c.basic.name == leaving:
@@ -119,9 +108,9 @@ class SimplexDictionary:
             # the leaving variable
             for i, c in enumerate(self.con):
                 if i != done:
-                    c.redefine_term(expression)
+                    c.redefine_term_constraint(expression)
             # Substitude new defn into objective function
-            self.obj.redefine_term(expression)
+            self.obj.redefine_term_objective(expression)
             #print(self)
 
 
