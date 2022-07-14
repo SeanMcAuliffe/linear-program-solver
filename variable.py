@@ -23,8 +23,6 @@ class DictionaryVariable:
             self.name = f"x_{self.index}"
         elif vartype is VarType.slack:
             self.name = f"w_{self.index}"
-        elif vartype is VarType.omega:
-            self.name = "\u03A9"
 
     def __lt__(self, other):
         if type(other) is DictionaryVariable:
