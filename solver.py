@@ -27,7 +27,7 @@ class Variable:
     """Represents a variable in either a constraint or objective function
     of the SimplexDictionary. Stores the variable type (optimization,
     slack, omega is represented as an optimization variable with index n+1).
-    As well as the index and coeficient. Some boilerplate is defined for
+    As well as the index and coefficient. Some boilerplate is defined for
     comparison operations."""
 
     def __init__(self, vartype, index, coef):
@@ -80,9 +80,10 @@ class Variable:
     def __repr__(self):
         return f"{self.name}: {self.coef}"
 
+
 class Equation:
     """Serves as a base class for a Constraint or Objective
-    function ofthe SimplexDictionary. Stores the scalar, nonbasic
+    function of the SimplexDictionary. Stores the scalar, nonbasic
     variables, and provides a method for redefining terms
     within the equation in terms of another."""
 
@@ -128,7 +129,7 @@ class Equation:
 
 
 class Objective(Equation):
-    """Represents an objective function of the SimplexDictionary."""
+    """Represents the objective function of the SimplexDictionary."""
     def __init__(self, nonbasic):
         super().__init__(nonbasic)
 
@@ -156,7 +157,8 @@ class Constraint(Equation):
     
     def rearrange_in_terms_of(self, varname):
         """Rearrange the equation so that variables represented
-        by varname is the new dependent variable."""
+        by varname is the new dependent variable.
+        :param: varname """
         temp = self.basic
         for var in self.nonbasic:
             if var.name == varname:
@@ -185,7 +187,7 @@ class Constraint(Equation):
 
 def blands_rule(objective, constraints):
     """Returns the name of the chosen entering and
-    leaving variables, chosen using Blands Rule."""
+    leaving variables, chosen using Bland's Rule."""
 
     # Find entering variable (first pos coefficient)
     entering_index = None
@@ -319,12 +321,12 @@ class SimplexDictionary:
                 done, expression = (i, c)
                 break
         # For every other constraint row,
-        # substitue in the new defn of 
+        # substitute in the new definition of
         # the leaving variable
         for i, c in enumerate(self.con):
             if i != done:
                 c.redefine_term(expression)
-        # Substitude new defn into objective function
+        # Substitute new definition into objective function
         self.obj.redefine_term(expression)
 
     def run(self):
@@ -350,7 +352,7 @@ class SimplexDictionary:
                 else:
                     print(f"{float(c[1]):.7g}")
         else:
-            # This should never happend
+            # This should never happen
             print("infeasible")
 
     def coordinates(self):
@@ -402,7 +404,7 @@ class SimplexDictionary:
     def __repr__(self):
         r = f"Feasible: {self.is_feasible()}\n"
         r += f"Optimal: {self.is_optimal()}\n"
-        #r += f"Unbounded: {self.is_unbounded()}\n\n"
+        r += f"Unbounded: {self.is_unbounded()}\n\n"
         r += f"Objective: {self.obj.__repr__()}\n"
         r += "Constraints:\n"
         for c in self.con:
@@ -416,7 +418,7 @@ def main():
     lines = sys.stdin.readlines()
     lines = [x for x in lines if len(x.rstrip()) > 0]
 
-    # Get the number of constaint functions
+    # Get the number of constraint functions
     num_constraints = len(lines) - 1
 
     # Convert objective function to fractional coefficients
