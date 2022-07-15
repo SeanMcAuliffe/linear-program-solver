@@ -6,12 +6,12 @@ import sys
 from fractions import Fraction
 from variable import DictionaryVariable as Variable, VarType
 from equation import Constraint, Objective
-from util import timing
+from util import timer
 from copy import deepcopy
 from time import time
 
 
-@timing
+#@timing
 # TODO blands rule needs to consider x vars to be less than w vars
 def blands_rule(objective, constraints):
     """ Returns the name of the chosen entering and
@@ -39,12 +39,28 @@ def blands_rule(objective, constraints):
                 leaving = con.basic.name
             # If it is equal, need to compare indices of leaving vars
             elif ratio == min_ratio:
-                challenger = con.basic.index # new possible leaving var index
+                challenger = con.basic.name # new possible leaving var index
                 # Previously selected leaving var index
                 # TODO: This breaks with omega
-                champion = int(''.join(c for c in leaving if c.isdigit())) if leaving != "\u03A9" else challenger+1
-                if challenger < champion:
-                    leaving = con.basic.name
+                champion = leaving #int(''.join(c for c in leaving if c.isdigit())) if leaving != "\u03A9" else challenger+1
+                if challenger.startswith('x') and champion.startswith('x'):
+                    chal = ''.join(c for c in challenger if c.isdigit())
+                    cham = ''.join(c for c in champion if c.isdigit())
+                    if chal < cham:
+                        leaving = challenger
+                    else:
+                        pass
+                elif challenger.startswith('x') and champion.startswith('w'):
+                    leaving = challenger
+                elif challenger.startswith('w') and champion.startswith('x'):
+                    pass
+                else: # challenger is w and champion is w
+                    chal = ''.join(c for c in challenger if c.isdigit())
+                    cham = ''.join(c for c in champion if c.isdigit())
+                    if chal < cham:
+                        leaving = challenger
+                    else:
+                        pass
 
     return entering, leaving
 
@@ -101,14 +117,14 @@ class SimplexDictionary:
                 least_feasible = constraint
         return least_feasible.basic.name
 
-    #@timing
+    ##@timing
     def is_feasible(self):
         for c in self.con:
             if c.scalar < 0:
                 return False
         return True
 
-    #@timing
+    ##@timing
     def is_unbounded(self):
         for i, objvar in enumerate(self.obj.nonbasic):
             if objvar.coef > 0:
@@ -121,7 +137,7 @@ class SimplexDictionary:
                     return True
         return False
 
-    #@timing
+    ##@timing
     def is_optimal(self):
         optimal = True
         for var in self.obj.nonbasic:
@@ -129,7 +145,7 @@ class SimplexDictionary:
                 optimal = False
         return optimal
 
-    @timing
+    #@timing
     def should_continue(self):
         unbounded = self.is_unbounded()
         optimal = self.is_optimal()
@@ -150,7 +166,7 @@ class SimplexDictionary:
         # Substitude new defn into objective function
         self.obj.redefine_term_objective(expression)
 
-    #@timing
+    ##@timing
     def run(self):
         while self.should_continue():
             entering, leaving = self.rule(self.obj, self.con)
@@ -216,10 +232,11 @@ class SimplexDictionary:
         sys.stderr.write(f"{feasible_lp}\n")
         # Redefine original objective function
         sys.stderr.write("Redefining objective function\n")
+        temp_obj = deepcopy(self.original_obj)
         feasible_lp.obj = deepcopy(self.original_obj)
         sys.stderr.write(f"Original objective function: {self.original_obj}\n")
         sys.stderr.write(f"New objective function: {feasible_lp.obj}\n")
-        for term in feasible_lp.obj.nonbasic:
+        for term in temp_obj.nonbasic:
             found = False
             for constraint in feasible_lp.con:
                 if constraint.basic.name == term.name:
@@ -237,7 +254,7 @@ class SimplexDictionary:
     def __repr__(self):
         r = f"Feasible: {self.is_feasible()}\n"
         r += f"Optimal: {self.is_optimal()}\n"
-        r += f"Unbounded: {self.is_unbounded()}\n\n"
+        #r += f"Unbounded: {self.is_unbounded()}\n\n"
         r += f"Objective: {self.obj.__repr__()}\n"
         r += "Constraints:\n"
         for c in self.con:
@@ -270,23 +287,28 @@ def main(filename):
         constraints[i-1] = [Fraction.from_float(x).limit_denominator() for x in constraints[i-1]]
 
     # Construct initial dictionary representation of LP
-    simplex_dictionary = SimplexDictionary(objective, constraints, blands_rule)
+    input_dictionary = SimplexDictionary(objective, constraints, blands_rule)
     sys.stderr.write("Constructed dictionary representation of LP\n")
-    sys.stderr.write(f"{simplex_dictionary}\n")
-    if not simplex_dictionary.is_feasible():
-        auxiliary_lp = simplex_dictionary.get_auxiliary_lp()
+    sys.stderr.write(f"{input_dictionary}\n")
+    if not input_dictionary.is_feasible():
+        auxiliary_lp = input_dictionary.get_auxiliary_lp()
         auxiliary_lp.run()
         if auxiliary_lp.is_unbounded():
             print("infeasible")
         elif auxiliary_lp.obj.scalar != 0:
             print("infeasible")
         else:
+            sys.stderr.write("*** STARTING CONVERSION ***\n")
             feasible_dictionary = auxiliary_lp.convert()
+           # sys.stderr.write(f"{feasible_dictionary}\n")
+            sys.stderr.write("*** DONE CONVERSION ***\n")
+            sys.stderr.write(f"feasible_dictionary:\n {feasible_dictionary}\n")
             feasible_dictionary.run()
+            sys.stderr.write("*** DONE SOLVING THE FEASIBLE DICTIONARY***\n")
             feasible_dictionary.report()
     else:
-        simplex_dictionary.run()
-        simplex_dictionary.report()
+        input_dictionary.run()
+        input_dictionary.report()
 
 
 if __name__ == "__main__":

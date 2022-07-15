@@ -1,6 +1,6 @@
 from variable import VarType
 from copy import deepcopy
-from util import timing
+from util import timer
 from time import time
 
 
@@ -12,7 +12,7 @@ class Objective:
         self.nonbasic = nonbasic
         self._sort()
 
-    #@timing
+    ##@timing
     def redefine_term_objective(self, expression):
         multiplier = 0
         temp = []
@@ -66,7 +66,7 @@ class Constraint:
         self.basic.coef = 1
         self._sort()
     
-    @timing
+    #@timing
     def rearrange_in_terms_of(self, varname):
         """ Rearrange the equation so that `variable` is the 
         new dependent variable. """
@@ -86,7 +86,7 @@ class Constraint:
         self.scalar /= divisor
         self._sort()
 
-    @timing
+    #@timing
     def redefine_term_constraint(self, expression):
         """ The definition of `variable` is being replaced with
         an `expression` in terms of the other variables in this 

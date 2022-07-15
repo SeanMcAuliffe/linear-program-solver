@@ -10,13 +10,13 @@ def main():
     timedout = 0
     wrong_but_initially_infeasible = 0
 
-    #filenames = os.listdir("./data/input")
-    filenames = ["vanderbei_exercise2.10.txt"]
+    filenames = os.listdir("./data/input")
+    #filenames = ["optimal_3x3_6.txt"]
     for filename in filenames:
         print("\nDoing {}".format(filename))
         ts = time()
         try:
-            completed = subprocess.run(["python", "solver.py", "./data/input/" + filename], stdout=subprocess.PIPE, timeout=5)
+            completed = subprocess.run(["python", "solver.py", "./data/input/" + filename], stdout=subprocess.PIPE, timeout=10)
         except subprocess.TimeoutExpired:
             print("\nTimeout")
             timedout += 1
@@ -54,7 +54,7 @@ def main():
                 print(f"Answer:/n{answer}")
             incorrect += 1
 
-    print("\n\n{} correct, {} incorrect, {} initially infeasible, {} actually wrong, {} timed out".format(correct, incorrect, wrong_but_initially_infeasible, incorrect - wrong_but_initially_infeasible - timedout, timedout)) 
+    print("\n\n{} correct, {} incorrect, {} timed out".format(correct, incorrect - timedout, timedout)) 
 
 
 if __name__ == "__main__":
