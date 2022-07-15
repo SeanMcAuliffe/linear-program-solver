@@ -44,6 +44,8 @@ or
 $ cat input.txt | python3 solver.py
 ```
 
+To ensure that import errors do not occur in the test environment, all additional classes and functionality has been included in a the single file required to run this LP solver, `solver.py`.
+
 This program expects to be executed in the `python3` interperter. Any version of the python interpreter version 3.x.x should suffice.
 
 ## Output Format

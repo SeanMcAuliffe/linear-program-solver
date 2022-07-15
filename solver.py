@@ -11,15 +11,181 @@
 
 
 import sys
+from enum import Enum
 from fractions import Fraction
-from variable import DictionaryVariable as Variable, VarType
-from equation import Constraint, Objective
+# from variable import DictionaryVariable as Variable, VarType
+# from equation import Constraint, Objective
 from copy import deepcopy
 
 
+class VarType(Enum):
+    optimization = 1
+    slack = 2
+
+
+class Variable:
+    """Represents a variable in either a constraint or objective function
+    of the SimplexDictionary. Stores the variable type (optimization,
+    slack, omega is represented as an optimization variable with index n+1).
+    As well as the index and coeficient. Some boilerplate is defined for
+    comparison operations."""
+
+    def __init__(self, vartype, index, coef):
+        self.vartype = vartype
+        self.index = index
+        self.coef = coef
+        if vartype is VarType.optimization:
+            self.name = f"x_{self.index}"
+        elif vartype is VarType.slack:
+            self.name = f"w_{self.index}"
+
+    def __lt__(self, other):
+        if type(other) is Variable:
+            if self.index < other.index:
+                return True
+            return False
+        elif type(other) is int or type(other) is float:
+            if self.coef < other:
+                return True
+            return False
+        else:
+            raise TypeError(f"'<' operator not defined on types Variable and {type(other)}")
+
+    def __gt__(self, other):
+        if type(other) is Variable:
+            if self.coef > other.coef:
+                return True
+            return False
+        elif type(other) is int or type(other) is float:
+            if self.coef > other:
+                return True
+            return False
+        else:
+            raise TypeError(f"'>' operator not defined on types Variable and {type(other)}")
+
+    def __eq__(self, other):
+        if type(other) is Variable:
+            if self.name == other.name:
+                return True
+            else:
+                return False
+        elif type(other) is str:
+            if self.name == other:
+                return True
+            else:
+                return False
+        else: 
+            raise TypeError(f"Unsupported type for '=', Variable and {type(other)}")
+
+    def __repr__(self):
+        return f"{self.name}: {self.coef}"
+
+class Equation:
+    """Serves as a base class for a Constraint or Objective
+    function ofthe SimplexDictionary. Stores the scalar, nonbasic
+    variables, and provides a method for redefining terms
+    within the equation in terms of another."""
+
+    def __init__(self, nonbasic):
+        self.scalar = 0
+        self.nonbasic = nonbasic
+        self._sort()
+
+    def redefine_term(self, expression):
+        """Redefine the equation in terms of another expression
+        (another constraint equation)."""
+        multiplier = 0
+        temp = []
+        for var in self.nonbasic:
+            if var.name == expression.basic.name:
+                multiplier = var.coef
+                self.nonbasic.remove(var)
+                break
+        self.scalar += expression.scalar*multiplier
+        for new in expression.nonbasic:
+            found = False
+            for v in self.nonbasic:
+                if v.name == new.name:
+                    found = True
+                    v.coef += new.coef*multiplier
+                    break
+            if not found:
+                copy_variable = deepcopy(new)
+                copy_variable.coef *= multiplier
+                temp.append(copy_variable)
+        self.nonbasic.extend(temp)
+        self._sort()
+
+    def _sort(self):
+        """Ensure that nonbasic variables are always listed in order of index.
+        With optimization variables coming before slack variables always."""
+        temp_opt = [v for v in self.nonbasic if v.vartype is VarType.optimization]
+        temp_slack = [v for v in self.nonbasic if v.vartype is VarType.slack]
+        temp_opt.sort()
+        temp_slack.sort()
+        temp_opt.extend(temp_slack)
+        self.nonbasic = temp_opt
+
+
+class Objective(Equation):
+    """Represents an objective function of the SimplexDictionary."""
+    def __init__(self, nonbasic):
+        super().__init__(nonbasic)
+
+    def __repr__(self):
+        r = f"{self.scalar} "
+        for nb in self.nonbasic:
+            if nb.coef > 0:
+                r += f"+ {nb.coef}{nb.name} "
+            else:
+                r += f"- {abs(nb.coef)}{nb.name} "
+        return r
+
+
+class Constraint(Equation):
+    """Extends the Equation class to include a basic variable.
+    Provides a method for rearranging the constraint equation;
+    making one of its nonbasic variables the new dependent variable."""
+
+    def __init__(self, basic, nonbasic):
+        super().__init__(nonbasic)
+        self.scalar = basic.coef
+        self.basic = basic
+        self.basic.coef = 1
+        self._sort()
+    
+    def rearrange_in_terms_of(self, varname):
+        """Rearrange the equation so that variables represented
+        by varname is the new dependent variable."""
+        temp = self.basic
+        for var in self.nonbasic:
+            if var.name == varname:
+                self.basic = var
+                self.nonbasic.remove(self.basic)
+                self.basic.coef *= -1
+                break
+        temp.coef *= -1
+        self.nonbasic.append(temp)
+        divisor = self.basic.coef
+        self.basic.coef = 1
+        for var in self.nonbasic:
+            var.coef /= divisor
+        self.scalar /= divisor
+        self._sort()
+
+    def __repr__(self):
+        r = f"{self.basic.coef}{self.basic.name} = {self.scalar} "
+        for nb in self.nonbasic:
+            if nb.coef > 0:
+                r += f"+ {nb.coef}{nb.name} "
+            else:
+                r += f"- {abs(nb.coef)}{nb.name} "
+        return r
+
+
 def blands_rule(objective, constraints):
-    """ Returns the name of the chosen entering and
-    leaving variables, chosen using Blands Rule. """
+    """Returns the name of the chosen entering and
+    leaving variables, chosen using Blands Rule."""
 
     # Find entering variable (first pos coefficient)
     entering_index = None
@@ -107,8 +273,8 @@ class SimplexDictionary:
         return auxiliary_lp
 
     def least_feasible_constraint(self):
-        """ Returns the name of the basic variable in the least 
-        feasible constraint. """
+        """Returns the name of the basic variable in the least 
+        feasible constraint."""
         least_feasible = self.con[0]
         for constraint in self.con:
             if constraint.scalar < least_feasible.scalar:
@@ -167,8 +333,8 @@ class SimplexDictionary:
             self.pivot(entering, leaving)
 
     def report(self):
-        """ Generates an output string in accordance
-        with the project spec. """
+        """Generates an output string in accordance
+        with the project spec."""
         # Format Output
         if not self.is_feasible():
             print("infeasible")
@@ -188,11 +354,11 @@ class SimplexDictionary:
             print("infeasible")
 
     def coordinates(self):
-        """ Returns the values of the optimization variables
+        """Returns the values of the optimization variables
         of the dictionary in its current state. The values are
         formatted as a list of tuples, with the first element
         representing the variable index, and the second element
-        representing the value. """
+        representing the value."""
         coords = []
         x = [(v.basic.index, v.scalar) for v in self.con if v.basic.vartype is VarType.optimization]
         x.sort(key=lambda x: x[0])
@@ -209,6 +375,8 @@ class SimplexDictionary:
         return coords
 
     def convert(self):
+        """Converts an auxiliary LP into an LP representing the
+        original problem, but now it is feasible."""
         feasible_lp = deepcopy(self)
         # Remove omega column
         omega_name = f"x_{self.omega_index}"
