@@ -16,7 +16,7 @@ def main():
         print("\nDoing {}".format(filename))
         ts = time()
         try:
-            completed = subprocess.run(["python", "solver.py", "./data/input/" + filename], stdout=subprocess.PIPE, timeout=10)
+            completed = subprocess.run(["python", "solver.py", "./data/input/" + filename], stdout=subprocess.PIPE, timeout=5)
         except subprocess.TimeoutExpired:
             print("\nTimeout")
             timedout += 1
