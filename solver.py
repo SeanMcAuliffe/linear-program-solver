@@ -178,9 +178,11 @@ class SimplexDictionary:
             print("optimal")
             print(f"{float(self.obj.scalar):.7g}")
             coords = self.coordinates()
-            for c in coords:
-                print(f"{float(c[1]):.7g}", end=' ')
-            print()
+            for i, c in enumerate(coords):
+                if i != len(coords)-1:
+                    print(f"{float(c[1]):.7g}", end=' ')
+                else:
+                    print(f"{float(c[1]):.7g}")
         else:
             # This should never happend
             print("infeasible")
