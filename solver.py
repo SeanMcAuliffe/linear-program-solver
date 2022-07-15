@@ -1,18 +1,22 @@
 # Linear Program Solver
 # author: Sean McAuliffe, V00913346
+# date: 07/15/2022
+
+# This LP solver uses the dictionary simplex method.
+# It can initialize initially infeasible LPs, and can
+# in principle solve LPs of arbitrary size. However,
+# due to the object oriented design approach chosen
+# early on for ease of development, there is a lot of
+# overhead which increases the runtime of large LPs.
 
 
 import sys
 from fractions import Fraction
 from variable import DictionaryVariable as Variable, VarType
 from equation import Constraint, Objective
-from util import timer
 from copy import deepcopy
-from time import time
 
 
-#@timing
-# TODO blands rule needs to consider x vars to be less than w vars
 def blands_rule(objective, constraints):
     """ Returns the name of the chosen entering and
     leaving variables, chosen using Blands Rule. """
@@ -25,7 +29,8 @@ def blands_rule(objective, constraints):
             entering_index = i
             break
     
-    # Find leaving variable (minimum c/m coefficient)
+    # Find leaving variable (minimum c/m coefficient) with
+    # indices breaking ties and x < omega < w
     min_ratio = None
     for con in constraints:
         if con.nonbasic[entering_index].coef < 0:
@@ -39,10 +44,8 @@ def blands_rule(objective, constraints):
                 leaving = con.basic.name
             # If it is equal, need to compare indices of leaving vars
             elif ratio == min_ratio:
-                challenger = con.basic.name # new possible leaving var index
-                # Previously selected leaving var index
-                # TODO: This breaks with omega
-                champion = leaving #int(''.join(c for c in leaving if c.isdigit())) if leaving != "\u03A9" else challenger+1
+                challenger = con.basic.name 
+                champion = leaving 
                 if challenger.startswith('x') and champion.startswith('x'):
                     chal = ''.join(c for c in challenger if c.isdigit())
                     cham = ''.join(c for c in champion if c.isdigit())
@@ -97,15 +100,10 @@ class SimplexDictionary:
         # Add omega to each constraint
         for constraint in auxiliary_lp.con:
             constraint.nonbasic.append(Variable(VarType.optimization, self.omega_index, Fraction(1,1)))
-        sys.stderr.write("Constructed Auxiliary LP: \n")
-        sys.stderr.write(f"{auxiliary_lp}\n")
-        # If not initially feasible, perform initial pivot
         if not auxiliary_lp.is_feasible():
             leaving = self.least_feasible_constraint()
             entering = f"x_{self.omega_index}"
             auxiliary_lp.pivot(entering, leaving)
-        sys.stderr.write("After Initial Pivot: \n")
-        sys.stderr.write(f"{auxiliary_lp}\n")
         return auxiliary_lp
 
     def least_feasible_constraint(self):
@@ -117,14 +115,12 @@ class SimplexDictionary:
                 least_feasible = constraint
         return least_feasible.basic.name
 
-    ##@timing
     def is_feasible(self):
         for c in self.con:
             if c.scalar < 0:
                 return False
         return True
 
-    ##@timing
     def is_unbounded(self):
         for i, objvar in enumerate(self.obj.nonbasic):
             if objvar.coef > 0:
@@ -137,7 +133,6 @@ class SimplexDictionary:
                     return True
         return False
 
-    ##@timing
     def is_optimal(self):
         optimal = True
         for var in self.obj.nonbasic:
@@ -145,7 +140,6 @@ class SimplexDictionary:
                 optimal = False
         return optimal
 
-    #@timing
     def should_continue(self):
         unbounded = self.is_unbounded()
         optimal = self.is_optimal()
@@ -158,26 +152,23 @@ class SimplexDictionary:
                 c.rearrange_in_terms_of(entering)
                 done, expression = (i, c)
                 break
-            # For every other constraint row, substitue in the new defn of 
-            # the leaving variable
+        # For every other constraint row,
+        # substitue in the new defn of 
+        # the leaving variable
         for i, c in enumerate(self.con):
             if i != done:
-                c.redefine_term_constraint(expression)
+                c.redefine_term(expression)
         # Substitude new defn into objective function
-        self.obj.redefine_term_objective(expression)
+        self.obj.redefine_term(expression)
 
-    ##@timing
     def run(self):
         while self.should_continue():
             entering, leaving = self.rule(self.obj, self.con)
             self.pivot(entering, leaving)
 
-
-    def init_from_feasible_point(self):
-        # TODO: Handle initially infeasible dictionaries
-        pass
-
     def report(self):
+        """ Generates an output string in accordance
+        with the project spec. """
         # Format Output
         if not self.is_feasible():
             print("infeasible")
@@ -191,15 +182,20 @@ class SimplexDictionary:
                 print(f"{float(c[1]):.7g}", end=' ')
             print()
         else:
-            print("undefined")
+            # This should never happend
+            print("infeasible")
 
     def coordinates(self):
+        """ Returns the values of the optimization variables
+        of the dictionary in its current state. The values are
+        formatted as a list of tuples, with the first element
+        representing the variable index, and the second element
+        representing the value. """
         coords = []
         x = [(v.basic.index, v.scalar) for v in self.con if v.basic.vartype is VarType.optimization]
         x.sort(key=lambda x: x[0])
         j = 0
         for i in range(self.highest_index):
-            # TODO: Understand why try / except works here
             try:
                 if x[j][0] == (i+1):
                     coords.append(x[j])
@@ -211,11 +207,7 @@ class SimplexDictionary:
         return coords
 
     def convert(self):
-        # Create copy of self
         feasible_lp = deepcopy(self)
-        sys.stderr.write("Solved auxiliary LP\n")
-        sys.stderr.write(f"{feasible_lp}\n")
-        sys.stderr.write("Converting to feasible form...\n")
         # Remove omega column
         omega_name = f"x_{self.omega_index}"
         for var in feasible_lp.obj.nonbasic:
@@ -225,30 +217,16 @@ class SimplexDictionary:
         for constraint in feasible_lp.con:
             for var in constraint.nonbasic:
                 if var.name == omega_name:
-                    sys.stderr.write(f"Removing var: {var.name} from constraint: {constraint.basic.name}\n")
                     constraint.nonbasic.remove(var)
                     break
-        sys.stderr.write("Removed omega column\n")
-        sys.stderr.write(f"{feasible_lp}\n")
         # Redefine original objective function
-        sys.stderr.write("Redefining objective function\n")
         temp_obj = deepcopy(self.original_obj)
         feasible_lp.obj = deepcopy(self.original_obj)
-        sys.stderr.write(f"Original objective function: {self.original_obj}\n")
-        sys.stderr.write(f"New objective function: {feasible_lp.obj}\n")
         for term in temp_obj.nonbasic:
-            found = False
             for constraint in feasible_lp.con:
                 if constraint.basic.name == term.name:
-                    sys.stderr.write(f"Redefining constraint: {constraint.basic.name}\n")
-                    feasible_lp.obj.redefine_term_objective(constraint)
-                    sys.stderr.write("Now the objective function is: \n")
-                    sys.stderr.write(f"{feasible_lp.obj}\n")
-                    found = True
+                    feasible_lp.obj.redefine_term(constraint)
                     break
-            # if not found:
-            #     term.coef = 0
-        sys.stderr.write(f"{feasible_lp}\n")
         return feasible_lp
 
     def __repr__(self):
@@ -262,16 +240,11 @@ class SimplexDictionary:
         return r
 
 
-def main(filename):
+def main():
 
-    # For compatability with test script
-    with open(filename, "r") as f:
-        lines = f.readlines()
-        lines = [x for x in lines if len(x.rstrip()) > 0]
-
-    # Read stdin encoding of LP
-    # lines = sys.stdin.readlines()
-    # lines = [x for x in lines if len(x.rstrip()) > 0]
+    # Read STDIN encoding of LP
+    lines = sys.stdin.readlines()
+    lines = [x for x in lines if len(x.rstrip()) > 0]
 
     # Get the number of constaint functions
     num_constraints = len(lines) - 1
@@ -288,28 +261,27 @@ def main(filename):
 
     # Construct initial dictionary representation of LP
     input_dictionary = SimplexDictionary(objective, constraints, blands_rule)
-    sys.stderr.write("Constructed dictionary representation of LP\n")
-    sys.stderr.write(f"{input_dictionary}\n")
-    if not input_dictionary.is_feasible():
+
+    # Solve LP if initial dictionary is feasible
+    if input_dictionary.is_feasible():
+        input_dictionary.run()
+        input_dictionary.report()
+    else:
+        # Construct and solve the auxiliary LP
         auxiliary_lp = input_dictionary.get_auxiliary_lp()
         auxiliary_lp.run()
+        # If auxiliary LP is unbounded, or has nonzero objective value
+        # Then original LP is infeasible
         if auxiliary_lp.is_unbounded():
             print("infeasible")
         elif auxiliary_lp.obj.scalar != 0:
             print("infeasible")
         else:
-            sys.stderr.write("*** STARTING CONVERSION ***\n")
+            # Otherwise, convert to an initially feasible dictionary and solve
             feasible_dictionary = auxiliary_lp.convert()
-           # sys.stderr.write(f"{feasible_dictionary}\n")
-            sys.stderr.write("*** DONE CONVERSION ***\n")
-            sys.stderr.write(f"feasible_dictionary:\n {feasible_dictionary}\n")
             feasible_dictionary.run()
-            sys.stderr.write("*** DONE SOLVING THE FEASIBLE DICTIONARY***\n")
             feasible_dictionary.report()
-    else:
-        input_dictionary.run()
-        input_dictionary.report()
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main()

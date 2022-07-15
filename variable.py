@@ -1,19 +1,17 @@
 from enum import Enum
 
-from numpy import var
-
 
 class VarType(Enum):
     optimization = 1
     slack = 2
-    omega = 3
 
 
 class DictionaryVariable:
     """ Represents a variable in either a constraint or objective function
     of the SimplexDictionary. Stores the variable type (optimization,
-    slack, or omega). As well as the index and coeficient. Some boilerplate
-    is defined for comparison operations. """
+    slack, omega is represented as an optimization variable with index n+1).
+    As well as the index and coeficient. Some boilerplate is defined for
+    comparison operations. """
 
     def __init__(self, vartype, index, coef):
         self.vartype = vartype
