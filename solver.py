@@ -237,7 +237,6 @@ def blands_rule(objective, constraints):
 
 
 class SimplexDictionary:
-    # TODO: Represent nonbasic variables in objective, constraints using dict, not list
     def __init__(self, objective, constraints, rule):
         self.rule = rule
         self.obj = None
